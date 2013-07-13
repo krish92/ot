@@ -1,0 +1,116 @@
+<h1>hello there</h1>
+<textarea id="doc"></textarea>
+
+<script type="text/javascript">
+	var rubyshare = function()
+	{
+		this.dispatcher = null;
+		this.options = {};
+		this.clientno = null;
+		this.doc = null;
+		this.opsq = [];
+		this.curposition = -1;
+		this.channel = null;
+		this.state = [];
+		this.id = null;
+	}
+	rubyshare.prototype ={
+		init : function(element)
+		{
+			this.doc=element;
+			this.dispatcher = new WebSocketRails('localhost:3000/websocket');
+			
+			this.channel = this.dispatcher.subscribe('channel_name');
+			this.channel.bind('catch', $.proxy(function(response){
+				this.update(response);
+			},this));
+			this.channel.bind('verified',$.proxy(function(response)
+			{
+				console.log('the vsalue of the id is '+this.id);
+				if(this.id==null)
+				{
+					this.id=response.id;
+					for(var i = 0; i <= response.length; i++) {
+				    	this.state.push(0);
+					}
+					this.start();
+				}
+				else
+				{
+					this.state.push(0);
+				}
+				console.log('the value of the state is '+this.state+ ' id is '+this.id);
+			},this));
+
+			this.dispatcher.trigger('init',this.id);
+			
+		},
+		start : function()
+		{
+			$(this.doc).keydown($.proxy(function(event){
+				//event.preventDefault();
+				var op = {};
+				this.state[this.id] = this.state[this.id]+1;
+				if(event.keyCode == 8)
+				{
+					op.event = 'delete';
+					if(this.curposition>0)
+					{
+						this.curposition = (this.curposition);
+						op.position = this.curposition;
+						this.curposition = this.curposition - 1 ;
+					}
+				}
+				else
+				{
+					op.event = 'insert';
+					this.curposition =(this.curposition+1);
+					op.position = this.curposition;
+					op.character = String.fromCharCode(event.keyCode);
+				}
+				op.timestamp = this.state;
+				op.id = this.id
+				this.opsq[this.opsq.length] = op;
+				console.log('the value of the operation si '+JSON.stringify(op));
+				this.dispatcher.trigger('update',op);
+			},this));	
+
+		},
+		update : function(data)
+		{
+			//to check for causality
+			var causal = this.causality(data);
+			console.log('the causality is '+causal);
+			
+		},
+		causality : function(data)
+		{
+			var check_causal =1;
+			if(data.id != this.id)
+			{
+				if(data.timestamp[data.id] == (this.state[data.id]+1))
+				{
+					for(var i = 0;i<this.state.length;i++)
+					{
+						if(i!=data.id)
+						{
+							if(data.timestamp[i]>this.state[i])
+							{
+								check_causal = 0;
+								break;
+							}
+						}
+					}
+				}
+			}
+			return check_causal;
+		},
+	 	getCaretCharacterOffsetWithin: function(element) {
+		  return $(element).prop("selectionStart")
+		}
+	}
+	var start = new rubyshare();
+	start.init(document.getElementById('doc'));
+
+
+</script>
