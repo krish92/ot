@@ -1,5 +1,5 @@
 <h1>hello there</h1>
-<textarea id="doc"></textarea>
+<div id="doc" contenteditable="true"></div>
 
 <script type="text/javascript">
 	var rubyshare = function()
@@ -13,6 +13,7 @@
 		this.channel = null;
 		this.state = [];
 		this.id = null;
+		this.historybuffer = [];
 	}
 	rubyshare.prototype ={
 		init : function(element)
@@ -68,8 +69,10 @@
 					op.position = this.curposition;
 					op.character = String.fromCharCode(event.keyCode);
 				}
+				this.historybuffer[this.historybuffer.length] = JSON.parse(JSON.stringify(op));
 				op.timestamp = this.state;
 				op.id = this.id
+				op.historybuffer = this.historybuffer;
 				this.opsq[this.opsq.length] = op;
 				console.log('the value of the operation si '+JSON.stringify(op));
 				this.dispatcher.trigger('update',op);
